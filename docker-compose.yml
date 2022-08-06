@@ -1,0 +1,185 @@
+version: '3.5'
+
+networks:
+  frontend:
+    driver: ${NETWORKS_DRIVER}
+  backend:
+    driver: ${NETWORKS_DRIVER}
+volumes:
+  mysql:
+    driver: ${VOLUMES_DRIVER}
+  redis:
+    driver: ${VOLUMES_DRIVER}
+
+services:
+
+### Workspace Utilities ##################################
+    workspace:
+      build:
+        context: ./workspace
+        args:
+          - BASE_IMAGE_TAG_PREFIX=${WORKSPACE_BASE_IMAGE_TAG_PREFIX}
+          - LARADOCK_PHP_VERSION=${PHP_VERSION}
+          - INSTALL_PHPREDIS=${WORKSPACE_INSTALL_PHPREDIS}
+          - INSTALL_NODE=${WORKSPACE_INSTALL_NODE}
+          - NPM_REGISTRY=${WORKSPACE_NPM_REGISTRY}
+          - NPM_FETCH_RETRIES=${WORKSPACE_NPM_FETCH_RETRIES}
+          - NPM_FETCH_RETRY_FACTOR=${WORKSPACE_NPM_FETCH_RETRY_FACTOR}
+          - NPM_FETCH_RETRY_MINTIMEOUT=${WORKSPACE_NPM_FETCH_RETRY_MINTIMEOUT}
+          - NPM_FETCH_RETRY_MAXTIMEOUT=${WORKSPACE_NPM_FETCH_RETRY_MAXTIMEOUT}
+          - COMPOSER_GLOBAL_INSTALL=${WORKSPACE_COMPOSER_GLOBAL_INSTALL}
+          - COMPOSER_VERSION=${WORKSPACE_COMPOSER_VERSION}
+          - COMPOSER_AUTH_JSON=${WORKSPACE_COMPOSER_AUTH_JSON}
+          - COMPOSER_REPO_PACKAGIST=${WORKSPACE_COMPOSER_REPO_PACKAGIST}
+          - INSTALL_MYSQL_CLIENT=${WORKSPACE_INSTALL_MYSQL_CLIENT}
+          - INSTALL_PING=${WORKSPACE_INSTALL_PING}
+          - INSTALL_SSHPASS=${WORKSPACE_INSTALL_SSHPASS}
+          - PUID=${WORKSPACE_PUID}
+          - PGID=${WORKSPACE_PGID}
+          - CHROME_DRIVER_VERSION=${WORKSPACE_CHROME_DRIVER_VERSION}
+          - NODE_VERSION=${WORKSPACE_NODE_VERSION}
+          - TZ=${WORKSPACE_TIMEZONE}
+          - http_proxy
+          - https_proxy
+          - no_proxy
+      volumes:
+        - ${APP_CODE_PATH_HOST}:${APP_CODE_PATH_CONTAINER}${APP_CODE_CONTAINER_FLAG}
+        - ./php-worker/supervisord.d:/etc/supervisord.d
+      extra_hosts:
+        - "dockerhost:${DOCKER_HOST_IP}"
+      ports:
+        - "${WORKSPACE_SSH_PORT}:22"
+      tty: true
+      environment:
+        - PHP_IDE_CONFIG=${PHP_IDE_CONFIG}
+        - DOCKER_TLS_VERIFY=1
+        - DOCKER_TLS_CERTDIR=/certs
+        - DOCKER_CERT_PATH=/certs/client
+        - CHOKIDAR_USEPOLLING=true
+      networks:
+        - frontend
+        - backend
+
+### PHP-FPM ##############################################
+    php-fpm:
+      build:
+        context: ./php-fpm
+        args:
+          - BASE_IMAGE_TAG_PREFIX=${PHP_FPM_BASE_IMAGE_TAG_PREFIX}
+          - LARADOCK_PHP_VERSION=${PHP_VERSION}
+          - INSTALL_BCMATH=${PHP_FPM_INSTALL_BCMATH}
+          - INSTALL_PHPREDIS=${PHP_FPM_INSTALL_PHPREDIS}
+          - INSTALL_OPCACHE=${PHP_FPM_INSTALL_OPCACHE}
+          - INSTALL_MYSQLI=${PHP_FPM_INSTALL_MYSQLI}
+          - INSTALL_INTL=${PHP_FPM_INSTALL_INTL}
+          - INSTALL_MYSQL_CLIENT=${PHP_FPM_INSTALL_MYSQL_CLIENT}
+          - INSTALL_PING=${PHP_FPM_INSTALL_PING}
+          - INSTALL_SSHPASS=${PHP_FPM_INSTALL_SSHPASS}
+          - PUID=${PHP_FPM_PUID}
+          - PGID=${PHP_FPM_PGID}
+          - LOCALE=${PHP_FPM_DEFAULT_LOCALE}
+          - http_proxy
+          - https_proxy
+          - no_proxy
+      volumes:
+        - ./php-fpm/php${PHP_VERSION}.ini:/usr/local/etc/php/php.ini
+        - ${APP_CODE_PATH_HOST}:${APP_CODE_PATH_CONTAINER}${APP_CODE_CONTAINER_FLAG}
+      expose:
+        - "9000"
+      extra_hosts:
+        - "dockerhost:${DOCKER_HOST_IP}"
+      environment:
+        - DOCKER_TLS_VERIFY=1
+        - DOCKER_TLS_CERTDIR=/certs
+        - DOCKER_CERT_PATH=/certs/client
+      depends_on:
+        - workspace
+      networks:
+        - backend
+
+### NGINX Server #########################################
+    nginx:
+      build:
+        context: ./nginx
+        args:
+          - PHP_UPSTREAM_CONTAINER=${NGINX_PHP_UPSTREAM_CONTAINER}
+          - PHP_UPSTREAM_PORT=${NGINX_PHP_UPSTREAM_PORT}
+          - http_proxy
+          - https_proxy
+          - no_proxy
+      volumes:
+        - ${APP_CODE_PATH_HOST}:${APP_CODE_PATH_CONTAINER}${APP_CODE_CONTAINER_FLAG}
+        - ${NGINX_HOST_LOG_PATH}:/var/log/nginx
+        - ${NGINX_SITES_PATH}:/etc/nginx/sites-available
+        - ${NGINX_SSL_PATH}:/etc/nginx/ssl
+      ports:
+        - "${NGINX_HOST_HTTP_PORT}:80"
+        - "${NGINX_HOST_HTTPS_PORT}:443"
+      depends_on:
+        - php-fpm
+      networks:
+        - frontend
+        - backend
+
+### MySQL ################################################
+    mysql:
+      build:
+        context: ./mysql
+        args:
+          - MYSQL_VERSION=${MYSQL_VERSION}
+      environment:
+        - MYSQL_DATABASE=${MYSQL_DATABASE}
+        - MYSQL_USER=${MYSQL_USER}
+        - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+        - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+        - TZ=${WORKSPACE_TIMEZONE}
+      volumes:
+        - ${DATA_PATH_HOST}/mysql:/var/lib/mysql
+        - ${MYSQL_ENTRYPOINT_INITDB}:/docker-entrypoint-initdb.d
+      ports:
+        - "${MYSQL_PORT}:3306"
+      networks:
+        - backend
+
+  ### Redis ################################################
+    redis:
+      build: ./redis
+      volumes:
+        - ${DATA_PATH_HOST}/redis:/data
+      command: --requirepass ${REDIS_PASSWORD}
+      ports:
+        - "${REDIS_PORT}:6379"
+      networks:
+        - backend
+  
+  ### phpMyAdmin ###########################################
+    phpmyadmin:
+      build: ./phpmyadmin
+      environment:
+        - PMA_ARBITRARY=1
+        - MYSQL_USER=${PMA_USER}
+        - MYSQL_PASSWORD=${PMA_PASSWORD}
+        - MYSQL_ROOT_PASSWORD=${PMA_ROOT_PASSWORD}
+        - MAX_EXECUTION_TIME=${PMA_MAX_EXECUTION_TIME}
+        - MEMORY_LIMIT=${PMA_MEMORY_LIMIT}
+        - UPLOAD_LIMIT=${PMA_UPLOAD_LIMIT}
+      ports:
+        - "${PMA_PORT}:80"
+      depends_on:
+        - "${PMA_DB_ENGINE}"
+      networks:
+        - frontend
+        - backend
+
+  ### Certbot #########################################
+    certbot:
+      build:
+        context: ./certbot
+      volumes:
+        - ./data/certbot/certs/:/var/certs
+        - ./certbot/letsencrypt/:/var/www/letsencrypt
+      environment:
+        - CN="fake.domain.com"
+        - EMAIL="fake.email@gmail.com"
+      networks:
+        - frontend
