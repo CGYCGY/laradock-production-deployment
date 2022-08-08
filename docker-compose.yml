@@ -143,6 +143,8 @@ services:
         - ${MYSQL_ENTRYPOINT_INITDB}:/docker-entrypoint-initdb.d
       expose:
         - "3306"
+#      ports:
+#        - "${MYSQL_PORT}:3306"
       networks:
         - backend
 
