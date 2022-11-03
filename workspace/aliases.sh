@@ -60,7 +60,6 @@ alias gs="git status"
 alias gbr="git branch"
 
 # custom aliases
-alias cdp="cd /var/www/posstore"
 alias ccc="php artisan config:cache"
 alias ic="php artisan init:common -C"
 alias tinker="php artisan tinker"
