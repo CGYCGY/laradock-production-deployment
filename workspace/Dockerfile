@@ -189,6 +189,16 @@ COPY ./crontab /etc/cron.d
 RUN chmod -R 644 /etc/cron.d
 
 ###########################################################################
+# Deployment Script
+###########################################################################
+
+USER root
+
+COPY deployment.sh /root/deployment.sh
+
+RUN chmod 644 /root/deployment.sh
+
+###########################################################################
 USER root
 
 ARG PHP_VERSION=${LARADOCK_PHP_VERSION}
