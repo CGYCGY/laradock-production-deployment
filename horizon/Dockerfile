@@ -72,6 +72,24 @@ RUN if [ ${INSTALL_SOCKETS} = true ]; then \
   docker-php-ext-install sockets \
   ;fi
 
+###########################################################################
+# ZipArchive:
+###########################################################################
+
+# Install ZipArchive:
+ARG INSTALL_ZIP_ARCHIVE=false
+RUN set -eux; \
+  if [ ${INSTALL_ZIP_ARCHIVE} = true ]; then \
+    apk --update add libzip-dev && \
+    if [ ${LARADOCK_PHP_VERSION} = "7.3" ] || [ ${LARADOCK_PHP_VERSION} = "7.4" ] || [ $(php -r "echo PHP_MAJOR_VERSION;") = "8" ]; then \
+      docker-php-ext-configure zip; \
+    else \
+      docker-php-ext-configure zip --with-libzip; \
+    fi && \
+    # Install the zip extension
+    docker-php-ext-install zip \
+;fi
+
 #--------------------------------------------------------------------------
 # Clean up
 #--------------------------------------------------------------------------
