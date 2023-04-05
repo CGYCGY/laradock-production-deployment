@@ -1,2 +1,2 @@
-* * * * * bash /root/deployment.sh >> /dev/null 2>&1
-* * * * * laradock /usr/bin/php /var/www/artisan schedule:run >> /dev/null 2>&1
++* * * * * root bash /root/deployment.sh >> /dev/null 2>&1
++* * * * * root /usr/bin/php /var/www/magiceye/artisan schedule:run >> /dev/null 2>&1
