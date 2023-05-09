@@ -1,6 +1,6 @@
 FROM phusion/baseimage:bionic-1.0.0
 
-LABEL maintainer="Mahmoud Zalt <mahmoud@zalt.me>"
+LABEL maintainer="Your Name <your_email@gmail.com>"
 
 COPY run-certbot.sh /root/certbot/run-certbot.sh
 
