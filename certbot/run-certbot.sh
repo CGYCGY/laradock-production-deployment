@@ -1,9 +1,13 @@
 #!/bin/bash
 
-letsencrypt certonly --webroot -w /var/www/letsencrypt -d "$CN" --agree-tos --email "$EMAIL" --non-interactive --text
+array=(${CN//,/ })
+for i in "${!array[@]}"
+do
+  letsencrypt certonly --webroot -w /var/www/letsencrypt -d "${array[i]}" --agree-tos --email "$EMAIL" --non-interactive --text
 
-cp /etc/letsencrypt/archive/"$CN"/cert1.pem /var/certs/"$CN"-cert1.pem
-cp /etc/letsencrypt/archive/"$CN"/chain1.pem /var/certs/chain1.pem
-cp /etc/letsencrypt/archive/"$CN"/fullchain1.pem /var/certs/fullchain1.pem
-cp /etc/letsencrypt/archive/"$CN"/privkey1.pem /var/certs/"$CN"-privkey1.pem
-
+  mkdir -p /var/certs/"${array[i]}"
+  cp /etc/letsencrypt/archive/"${array[i]}"/cert1.pem /var/certs/"${array[i]}"/cert.pem
+  cp /etc/letsencrypt/archive/"${array[i]}"/chain1.pem /var/certs/"${array[i]}"/chain.pem
+  cp /etc/letsencrypt/archive/"${array[i]}"/fullchain1.pem /var/certs/"${array[i]}"/fullchain.pem
+  cp /etc/letsencrypt/archive/"${array[i]}"/privkey1.pem /var/certs/"${array[i]}"/privkey.pem
+done
