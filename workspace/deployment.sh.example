@@ -1,0 +1,24 @@
+#!/bin/bash
+. /root/.bashrc
+cd /var/www/html
+eval $(ssh-agent -s);
+ssh-add /root/.ssh/id_rsa;
+git remote update
+UPSTREAM=${1:-'@{u}'}
+LOCAL=$(git rev-parse @)
+REMOTE=$(git rev-parse "$UPSTREAM")
+BASE=$(git merge-base @ "$UPSTREAM")
+if [ $LOCAL = $REMOTE ]; then
+    echo 'Up to date'
+    ssh-agent -k
+else
+    git pull
+    ssh-agent -k
+    composer install --prefer-source --ignore-platform-reqs --no-interaction --no-dev
+    php artisan migrate --force
+    php artisan view:clear
+    php artisan route:cache
+    php artisan config:cache
+    npm run dev
+#    chown -R laradock:laradock .
+fi
