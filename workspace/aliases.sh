@@ -46,8 +46,6 @@ alias e='exit'
 alias c="clear"
 alias code="cd /var/www"
 
-alias art="php artisan"
-alias artisan="php artisan"
 alias migrate="php artisan migrate"
 alias rollback="php artisan migrate:rollback"
 alias seed="php artisan db:seed"
@@ -60,6 +58,7 @@ alias gs="git status"
 alias gbr="git branch"
 
 # custom aliases
+alias ccc="php artisan"
 alias ccc="php artisan config:cache"
 alias ic="php artisan init:common -C"
 alias tinker="php artisan tinker"
